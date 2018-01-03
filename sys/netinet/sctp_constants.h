@@ -32,12 +32,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_constants.h 324615 2017-10-14 10:02:59Z tuexen $");
+#endif
 
 #ifndef _NETINET_SCTP_CONSTANTS_H_
 #define _NETINET_SCTP_CONSTANTS_H_
 
+#if defined(__Userspace_os_Windows)
+extern void getwintimeofday(struct timeval *tv);
+#endif
 
 /* IANA assigned port number for SCTP over UDP encapsulation */
 #define SCTP_OVER_UDP_TUNNELING_PORT 9899
@@ -100,8 +105,8 @@ __FBSDID("$FreeBSD$");
 #define SCTP_DEFAULT_VRF_SIZE 4
 
 /* JRS - Values defined for the HTCP algorithm */
-#define ALPHA_BASE	(1<<7)	/* 1.0 with shift << 7 */
-#define BETA_MIN	(1<<6)	/* 0.5 with shift << 7 */
+#define ALPHA_BASE	(1<<7)  /* 1.0 with shift << 7 */
+#define BETA_MIN	(1<<6)  /* 0.5 with shift << 7 */
 #define BETA_MAX	102	/* 0.8 with shift << 7 */
 
 /* Places that CWND log can happen from */
@@ -392,6 +397,9 @@ __FBSDID("$FreeBSD$");
 /* SCTP parameter types */
 /*************0x0000 series*************/
 #define SCTP_HEARTBEAT_INFO		0x0001
+#if defined(__Userspace__)
+#define SCTP_CONN_ADDRESS               0x0004
+#endif
 #define SCTP_IPV4_ADDRESS		0x0005
 #define SCTP_IPV6_ADDRESS		0x0006
 #define SCTP_STATE_COOKIE		0x0007
@@ -561,6 +569,10 @@ __FBSDID("$FreeBSD$");
 					 ((t) < SCTP_TIMER_TYPE_LAST))
 
 
+#if defined(__APPLE__)
+/* Number of ticks to run the main timer at in msec */
+#define SCTP_MAIN_TIMER_DEFAULT		10
+#endif
 
 /* max number of TSN's dup'd that I will hold */
 #define SCTP_MAX_DUP_TSNS	20
@@ -580,7 +592,11 @@ __FBSDID("$FreeBSD$");
  * number of clusters as a base. This way high bandwidth environments will
  * not get impacted by the lower bandwidth sending a bunch of 1 byte chunks
  */
+#ifdef __Panda__
+#define SCTP_ASOC_MAX_CHUNKS_ON_QUEUE 10240
+#else
 #define SCTP_ASOC_MAX_CHUNKS_ON_QUEUE 512
+#endif
 
 
 /* The conversion from time to ticks and vice versa is done by rounding
@@ -624,7 +640,7 @@ __FBSDID("$FreeBSD$");
 #define SCTP_RTO_INITIAL	(3000)	/* 3 sec in ms */
 
 
-#define SCTP_INP_KILL_TIMEOUT 20/* number of ms to retry kill of inpcb */
+#define SCTP_INP_KILL_TIMEOUT 20	/* number of ms to retry kill of inpcb */
 #define SCTP_ASOC_KILL_TIMEOUT 10	/* number of ms to retry kill of inpcb */
 
 #define SCTP_DEF_MAX_INIT		8
@@ -680,7 +696,11 @@ __FBSDID("$FreeBSD$");
 #define SCTP_DEBUG_USRREQ1	0x10000000	/* unused */
 #define SCTP_DEBUG_USRREQ2	0x20000000	/* unused */
 #define SCTP_DEBUG_PEEL1	0x40000000
+#if defined(__Userspace__)
+#define SCTP_DEBUG_USR 		0x80000000
+#else
 #define SCTP_DEBUG_XXXXX	0x80000000	/* unused */
+#endif
 #define SCTP_DEBUG_ALL		0x7ff3ffff
 #define SCTP_DEBUG_NOISY	0x00040000
 
@@ -696,7 +716,7 @@ __FBSDID("$FreeBSD$");
 
 #define SCTP_INITIAL_CWND 4380
 
-#define SCTP_DEFAULT_MTU 1500	/* emergency default MTU */
+#define SCTP_DEFAULT_MTU 1200	/* emergency default MTU */
 /* amount peer is obligated to have in rwnd or I will abort */
 #define SCTP_MIN_RWND	1500
 
@@ -713,6 +733,21 @@ __FBSDID("$FreeBSD$");
 #define SCTP_NUMBER_OF_SECRETS	8	/* or 8 * 4 = 32 octets */
 #define SCTP_SECRET_SIZE	32	/* number of octets in a 256 bits */
 
+/* Probing states */
+#define SCTP_PROBE_NONE                          0
+#define SCTP_PROBE_ERROR                         1
+#define SCTP_PROBE_BASE                          2
+#define SCTP_PROBE_SEARCH_UP                     3
+#define SCTP_PROBE_SEARCH_DOWN                   4
+#define SCTP_PROBE_DONE                          5
+
+#define SCTP_PROBE_MTU_V4_BASE                1200
+#define SCTP_PROBE_MTU_V6_BASE                1280
+
+#define SCTP_PROBE_MAX_PROBES                    2
+#define SCTP_PROBE_MIN                          76 /* Size of a HEARTBEAT Chunk with HB Info */
+
+#define SCTP_PROBE_UP                            1
 
 /*
  * SCTP upper layer notifications
@@ -812,6 +847,10 @@ __FBSDID("$FreeBSD$");
 #define SCTP_LOC_33 0x00000021
 #define SCTP_LOC_34 0x00000022
 #define SCTP_LOC_35 0x00000023
+#define SCTP_LOC_36 0x00000024
+#define SCTP_LOC_37 0x00000025
+#define SCTP_LOC_38 0x00000026
+#define SCTP_LOC_39 0x00000027
 
 
 /* Free assoc codes */
@@ -859,8 +898,13 @@ __FBSDID("$FreeBSD$");
 #define SCTP_CHUNKQUEUE_SCALE 10
 #endif
 
+#ifdef __FreeBSD__
 /* clock variance is 1 ms */
 #define SCTP_CLOCK_GRANULARITY	1
+#else
+/* clock variance is 10 ms */
+#define SCTP_CLOCK_GRANULARITY	10
+#endif
 #define IP_HDR_SIZE 40		/* we use the size of a IP6 header here this
 				 * detracts a small amount for ipv4 but it
 				 * simplifies the ipv6 addition */
@@ -988,6 +1032,15 @@ __FBSDID("$FreeBSD$");
     ((((uint8_t *)&(a)->s_addr)[0] == 169) && \
      (((uint8_t *)&(a)->s_addr)[1] == 254))
 
+#if defined(__Userspace__)
+#if defined(__Userspace_os_Windows)
+#define SCTP_GETTIME_TIMEVAL(x)	getwintimeofday(x)
+#define SCTP_GETPTIME_TIMEVAL(x) getwintimeofday(x) /* this doesn't seem to ever be used.. */
+#else
+#define SCTP_GETTIME_TIMEVAL(x)	gettimeofday(x, NULL)
+#define SCTP_GETPTIME_TIMEVAL(x) gettimeofday(x, NULL)
+#endif
+#endif
 
 #if defined(_KERNEL)
 #define SCTP_GETTIME_TIMEVAL(x) (getmicrouptime(x))
@@ -1004,6 +1057,7 @@ do { \
 	} \
 } while (0)
 
+#if defined(__FreeBSD__) || defined(__Windows__) || defined(__Userspace__)
 #define sctp_sowwakeup_locked(inp, so) \
 do { \
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_DONT_WAKE) { \
@@ -1013,6 +1067,17 @@ do { \
 		sowwakeup_locked(so); \
 	} \
 } while (0)
+#else
+#define sctp_sowwakeup_locked(inp, so) \
+do { \
+	if (inp->sctp_flags & SCTP_PCB_FLAGS_DONT_WAKE) { \
+                SOCKBUF_UNLOCK(&((so)->so_snd)); \
+		inp->sctp_flags |= SCTP_PCB_FLAGS_WAKEOUTPUT; \
+	} else { \
+		sowwakeup(so); \
+	} \
+} while (0)
+#endif
 
 #define sctp_sorwakeup(inp, so) \
 do { \
@@ -1023,6 +1088,7 @@ do { \
 	} \
 } while (0)
 
+#if defined(__FreeBSD__) || defined(__Windows__) || defined(__Userspace__)
 #define sctp_sorwakeup_locked(inp, so) \
 do { \
 	if (inp->sctp_flags & SCTP_PCB_FLAGS_DONT_WAKE) { \
@@ -1032,6 +1098,18 @@ do { \
 		sorwakeup_locked(so); \
 	} \
 } while (0)
+#else
 
-#endif				/* _KERNEL || __Userspace__ */
+#define sctp_sorwakeup_locked(inp, so) \
+do { \
+	if (inp->sctp_flags & SCTP_PCB_FLAGS_DONT_WAKE) { \
+		inp->sctp_flags |= SCTP_PCB_FLAGS_WAKEINPUT; \
+                SOCKBUF_UNLOCK(&((so)->so_rcv)); \
+	} else { \
+		sorwakeup(so); \
+	} \
+} while (0)
+#endif
+
+#endif				/* _KERNEL || __Userspace__*/
 #endif

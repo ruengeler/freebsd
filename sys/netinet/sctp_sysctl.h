@@ -32,8 +32,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_sysctl.h 299543 2016-05-12 16:34:59Z tuexen $");
+#endif
 
 #ifndef _NETINET_SCTP_SYSCTL_H_
 #define _NETINET_SCTP_SYSCTL_H_
@@ -53,7 +55,11 @@ struct sctp_sysctl {
 	uint32_t sctp_reconfig_enable;
 	uint32_t sctp_nrsack_enable;
 	uint32_t sctp_pktdrop_enable;
+	uint32_t sctp_plpmtud_enable;
 	uint32_t sctp_fr_max_burst_default;
+#if !(defined(__FreeBSD__) && __FreeBSD_version >= 800000)
+	uint32_t sctp_no_csum_on_loopback;
+#endif
 	uint32_t sctp_peer_chunk_oh;
 	uint32_t sctp_max_burst_default;
 	uint32_t sctp_max_chunks_on_queue;
@@ -108,7 +114,11 @@ struct sctp_sysctl {
 	uint32_t sctp_use_dccc_ecn;
 	uint32_t sctp_diag_info_code;
 #if defined(SCTP_LOCAL_TRACE_BUF)
+#if defined(__Windows__)
+	struct sctp_log *sctp_log;
+#else
 	struct sctp_log sctp_log;
+#endif
 #endif
 	uint32_t sctp_udp_tunneling_port;
 	uint32_t sctp_enable_sack_immediately;
@@ -118,6 +128,12 @@ struct sctp_sysctl {
 	uint32_t sctp_blackhole;
 #if defined(SCTP_DEBUG)
 	uint32_t sctp_debug_on;
+#endif
+#if defined(__APPLE__)
+	uint32_t sctp_ignore_vmware_interfaces;
+	uint32_t sctp_main_timer;
+	uint32_t sctp_addr_watchdog_limit;
+	uint32_t sctp_vtag_watchdog_limit;
 #endif
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 	uint32_t sctp_output_unlocked;
@@ -131,13 +147,21 @@ struct sctp_sysctl {
 #define SCTPCTL_MAXDGRAM_DESC		"Maximum outgoing SCTP buffer size"
 #define SCTPCTL_MAXDGRAM_MIN		0
 #define SCTPCTL_MAXDGRAM_MAX		0xFFFFFFFF
+#if defined(__Userspace__)
+#define SCTPCTL_MAXDGRAM_DEFAULT	SB_MAX
+#else
 #define SCTPCTL_MAXDGRAM_DEFAULT	262144	/* 256k */
+#endif
 
 /* recvspace: Maximum incoming SCTP buffer size */
 #define SCTPCTL_RECVSPACE_DESC		"Maximum incoming SCTP buffer size"
 #define SCTPCTL_RECVSPACE_MIN		0
 #define SCTPCTL_RECVSPACE_MAX		0xFFFFFFFF
+#if defined(__Userspace__)
+#define SCTPCTL_RECVSPACE_DEFAULT	SB_RAW
+#else
 #define SCTPCTL_RECVSPACE_DEFAULT	262144	/* 256k */
+#endif
 
 /* autoasconf: Enable SCTP Auto-ASCONF */
 #define SCTPCTL_AUTOASCONF_DESC		"Enable SCTP Auto-ASCONF"
@@ -192,6 +216,12 @@ struct sctp_sysctl {
 #define SCTPCTL_PKTDROP_ENABLE_MIN	0
 #define SCTPCTL_PKTDROP_ENABLE_MAX	1
 #define SCTPCTL_PKTDROP_ENABLE_DEFAULT	0
+
+/* plpmtud_enable: Enable Packetization Layer Path MTU Discovery */
+#define SCTPCTL_PLPMTUD_ENABLE_DESC	"Enable Packetization Layer PMTU Discovery"
+#define SCTPCTL_PLPMTUD_ENABLE_MIN	0
+#define SCTPCTL_PLPMTUD_ENABLE_MAX	1
+#define SCTPCTL_PLPMTUD_ENABLE_DEFAULT	0
 
 /* loopback_nocsum: Enable NO Csum on packets sent on loopback */
 #define SCTPCTL_LOOPBACK_NOCSUM_DESC	"Enable NO Csum on packets sent on loopback"
@@ -474,7 +504,11 @@ struct sctp_sysctl {
 #define SCTPCTL_UDP_TUNNELING_PORT_DESC		"Set the SCTP/UDP tunneling port"
 #define SCTPCTL_UDP_TUNNELING_PORT_MIN		0
 #define SCTPCTL_UDP_TUNNELING_PORT_MAX		65535
+#if defined(__FreeBSD__)
 #define SCTPCTL_UDP_TUNNELING_PORT_DEFAULT	0
+#else
+#define SCTPCTL_UDP_TUNNELING_PORT_DEFAULT	SCTP_OVER_UDP_TUNNELING_PORT
+#endif
 
 /* Enable sending of the SACK-IMMEDIATELY bit */
 #define SCTPCTL_SACK_IMMEDIATELY_ENABLE_DESC	"Enable sending of the SACK-IMMEDIATELY-bit."
@@ -526,12 +560,12 @@ struct sctp_sysctl {
 #define SCTPCTL_RTTVAR_STEADYS_DESC	"How many the sames it takes to try step down of cwnd"
 #define SCTPCTL_RTTVAR_STEADYS_MIN	0
 #define SCTPCTL_RTTVAR_STEADYS_MAX	0xFFFF
-#define SCTPCTL_RTTVAR_STEADYS_DEFAULT	20	/* 0 means disable feature */
+#define SCTPCTL_RTTVAR_STEADYS_DEFAULT	20 /* 0 means disable feature */
 
 #define SCTPCTL_RTTVAR_DCCCECN_DESC	"Enable for RTCC CC datacenter ECN"
 #define SCTPCTL_RTTVAR_DCCCECN_MIN	0
 #define SCTPCTL_RTTVAR_DCCCECN_MAX	1
-#define SCTPCTL_RTTVAR_DCCCECN_DEFAULT	1	/* 0 means disable feature */
+#define SCTPCTL_RTTVAR_DCCCECN_DEFAULT	1 /* 0 means disable feature */
 
 #define SCTPCTL_BLACKHOLE_DESC		"Enable SCTP blackholing. See blackhole(4) for more details."
 #define SCTPCTL_BLACKHOLE_MIN		0
@@ -551,6 +585,17 @@ struct sctp_sysctl {
 #define SCTPCTL_DEBUG_DEFAULT	0
 #endif
 
+#if defined(__APPLE__)
+#define SCTPCTL_MAIN_TIMER_DESC		"Main timer interval in ms"
+#define SCTPCTL_MAIN_TIMER_MIN		1
+#define SCTPCTL_MAIN_TIMER_MAX		0xFFFFFFFF
+#define SCTPCTL_MAIN_TIMER_DEFAULT	10
+
+#define SCTPCTL_IGNORE_VMWARE_INTERFACES_DESC		"Ignore VMware Interfaces"
+#define SCTPCTL_IGNORE_VMWARE_INTERFACES_MIN		0
+#define SCTPCTL_IGNORE_VMWARE_INTERFACES_MAX		1
+#define SCTPCTL_IGNORE_VMWARE_INTERFACES_DEFAULT	SCTPCTL_IGNORE_VMWARE_INTERFACES_MAX
+#endif
 
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 #define SCTPCTL_OUTPUT_UNLOCKED_DESC	"Unlock socket when sending packets down to IP."
@@ -559,13 +604,29 @@ struct sctp_sysctl {
 #define SCTPCTL_OUTPUT_UNLOCKED_DEFAULT	SCTPCTL_OUTPUT_UNLOCKED_MIN
 #endif
 
+#if defined(__APPLE__)
+#define	SCTPCTL_ADDR_WATCHDOG_LIMIT_DESC	"Address watchdog limit"
+#define	SCTPCTL_ADDR_WATCHDOG_LIMIT_MIN		0
+#define	SCTPCTL_ADDR_WATCHDOG_LIMIT_MAX		0xFFFFFFFF
+#define	SCTPCTL_ADDR_WATCHDOG_LIMIT_DEFAULT	SCTPCTL_ADDR_WATCHDOG_LIMIT_MIN
+
+#define	SCTPCTL_VTAG_WATCHDOG_LIMIT_DESC	"VTag watchdog limit"
+#define	SCTPCTL_VTAG_WATCHDOG_LIMIT_MIN		0
+#define	SCTPCTL_VTAG_WATCHDOG_LIMIT_MAX		0xFFFFFFFF
+#define	SCTPCTL_VTAG_WATCHDOG_LIMIT_DEFAULT	SCTPCTL_VTAG_WATCHDOG_LIMIT_MIN
+#endif
 
 #if defined(_KERNEL) || defined(__Userspace__)
+#if defined(__FreeBSD__) || defined(__APPLE__) || defined(__Userspace__)
 #if defined(SYSCTL_DECL)
 SYSCTL_DECL(_net_inet_sctp);
 #endif
+#endif
 
 void sctp_init_sysctls(void);
+#if defined(__Windows__)
+void sctp_finish_sysctls(void);
+#endif
 
-#endif				/* _KERNEL */
-#endif				/* __sctp_sysctl_h__ */
+#endif /* _KERNEL */
+#endif /* __sctp_sysctl_h__ */
